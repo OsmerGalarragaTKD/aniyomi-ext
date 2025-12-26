@@ -93,9 +93,11 @@ def get_all_modules() -> tuple[list[str], list[str]]:
     return modules, deleted
 
 def main() -> NoReturn:
-    _, ref, build_type = sys.argv
-    modules, deleted = get_module_list(ref)
+    # Ignoramos los argumentos y forzamos a que siempre obtenga TODO
+    modules, deleted = get_all_modules()
 
+    build_type = "Release" # Forzamos el tipo de construcción
+    
     chunked = {
         "chunk": [
             {"number": i + 1, "modules": modules}
@@ -107,12 +109,11 @@ def main() -> NoReturn:
         ]
     }
 
-    print(f"Module chunks to build:\n{json.dumps(chunked, indent=2)}\n\nModule to delete:\n{json.dumps(deleted, indent=2)}")
+    print(f"Matrix: {json.dumps(chunked)}")
 
     if os.getenv("CI") == "true":
         with open(os.getenv("GITHUB_OUTPUT"), 'a') as out_file:
             out_file.write(f"matrix={json.dumps(chunked)}\n")
             out_file.write(f"delete={json.dumps(deleted)}\n")
-
-if __name__ == '__main__':
-    main()
+    
+    sys.exit(0)
