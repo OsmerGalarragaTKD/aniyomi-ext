@@ -103,4 +103,5 @@ jobs:
           add: "." 
           new_branch: repo
           push: true
+          force: true # <--- AÑADE ESTA LÍNEA PARA EVITAR EL ERROR DE RECHAZO
           github_token: ${{ secrets.GITHUB_TOKEN }}
