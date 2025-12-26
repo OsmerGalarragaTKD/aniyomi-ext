@@ -72,29 +72,26 @@ jobs:
 
       - name: Create Repo Structure
         run: |
-          # 1. Crear carpeta limpia para el despliegue
           mkdir -p final_repo/apk
-          
-          # 2. Mover los APKs generados
           find src -name "*-release.apk" -exec cp {} final_repo/apk/ \;
           
-          # 3. Generar metadatos (Inspector)
           INSPECTOR_LINK="$(curl -s "https://api.github.com/repos/komikku-app/aniyomi-extensions-inspector/releases/latest" | jq -r '.assets[0].browser_download_url')"
           curl -L "$INSPECTOR_LINK" -o ./Inspector.jar
           java -jar ./Inspector.jar "final_repo/apk" "output.json" "tmp"
           
-          # 4. Crear estructura final
-          # Renombramos temporalmente para que el script create-repo.py funcione
           mv final_repo repo
           python ./.github/scripts/create-repo.py
+
+      - name: Force tracking repo files
+        run: |
+          # Esto soluciona el problema del .gitignore manualmente
+          git add -f repo/
 
       - name: Deploy to repo branch
         uses: EndBug/add-and-commit@v9
         with:
           message: "Filtered Build: Extensions updated"
-          # Subimos el contenido de la carpeta, no la carpeta entera
           add: "." 
           cwd: "./repo"
-          force: true
           new_branch: repo
           push: true
