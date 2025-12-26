@@ -102,6 +102,6 @@ jobs:
           message: "Full Sync: Updated all extensions in JSON"
           add: "." 
           new_branch: repo
-          push: true
-          force: true
+          # Usamos push con argumentos adicionales para forzar la actualización
+          push: origin repo --force
           github_token: ${{ secrets.GITHUB_TOKEN }}
