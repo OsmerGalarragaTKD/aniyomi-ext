@@ -1,6 +1,5 @@
 name: CI Optimized Build
 
-# --- ESTA ES LA PARTE QUE FALTABA (EVENT TRIGGERS) ---
 on:
   push:
     branches:
@@ -9,8 +8,7 @@ on:
       - 'src/**'
       - 'lib/**'
       - 'lib-multisrc/**'
-  workflow_dispatch: # Permite ejecutarlo manualmente desde la pestaña Actions
-# ----------------------------------------------------
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -74,25 +72,29 @@ jobs:
 
       - name: Create Repo Structure
         run: |
+          # 1. Crear carpeta temporal para compilar metadatos
           mkdir -p final_repo/apk
           find src -name "*-release.apk" -exec cp {} final_repo/apk/ \;
           
+          # 2. Obtener Inspector y generar JSON
           INSPECTOR_LINK="$(curl -s "https://api.github.com/repos/komikku-app/aniyomi-extensions-inspector/releases/latest" | jq -r '.assets[0].browser_download_url')"
           curl -L "$INSPECTOR_LINK" -o ./Inspector.jar
           java -jar ./Inspector.jar "final_repo/apk" "output.json" "tmp"
           
+          # 3. Ejecutar script de creación de repo
           mv final_repo repo
           python ./.github/scripts/create-repo.py
-
-      - name: Force tracking repo files
-        run: |
-          git add -f repo/
+          
+          # 4. SINCRONIZACIÓN: Mover archivos de repo/ a la raíz del espacio de trabajo
+          # Esto evita el error de la carpeta doble y sincroniza con los archivos de master
+          cp -r repo/* .
+          rm -rf repo
 
       - name: Deploy to repo branch
         uses: EndBug/add-and-commit@v9
         with:
-          message: "Filtered Build: Extensions updated"
+          message: "Full Sync: Master + Extensions Root"
+          # Al no usar cwd, sincroniza todo el contenido (master + tienda) en la raíz
           add: "." 
-          cwd: "./repo"
           new_branch: repo
           push: true
