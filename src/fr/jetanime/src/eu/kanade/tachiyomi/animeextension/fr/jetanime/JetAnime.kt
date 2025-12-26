@@ -15,7 +15,7 @@ import org.jsoup.nodes.Element
 
 class JetAnime : DooPlay(
     "fr",
-    "JetAnime",
+    "JetAnime ",
     "https://ssl.jetanimes.com",
 ) {
 
