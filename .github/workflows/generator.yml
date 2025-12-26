@@ -1,0 +1,11 @@
+name: Key Generator
+on: workflow_dispatch
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate Key
+        run: |
+          keytool -genkey -v -keystore signingkey.jks -alias angac03 -keyalg RSA -keysize 2048 -validity 10000 -storepass 654gac.5 -keypass 654gac.5 -dname "CN=Osmer, OU=Dev, O=Aniyomi, L=City, S=State, C=VE"
+          echo "COPIA EL SIGUIENTE TEXTO EN BASE64:"
+          base64 -w 0 signingkey.jks
