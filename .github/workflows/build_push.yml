@@ -1,5 +1,6 @@
 name: CI Optimized Build
 
+# --- ESTA ES LA PARTE QUE FALTABA (EVENT TRIGGERS) ---
 on:
   push:
     branches:
@@ -8,7 +9,8 @@ on:
       - 'src/**'
       - 'lib/**'
       - 'lib-multisrc/**'
-  workflow_dispatch:
+  workflow_dispatch: # Permite ejecutarlo manualmente desde la pestaña Actions
+# ----------------------------------------------------
 
 permissions:
   contents: write
@@ -84,7 +86,6 @@ jobs:
 
       - name: Force tracking repo files
         run: |
-          # Esto soluciona el problema del .gitignore manualmente
           git add -f repo/
 
       - name: Deploy to repo branch
