@@ -1,16 +1,48 @@
-name: CI Full Build
+name: CI Optimized Build
 
 on:
   push:
     branches:
       - master
+    paths:
+      - 'src/**'
+      - 'lib/**'
+      - 'lib-multisrc/**'
   workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
+  prepare:
+    name: Prepare job
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.generate-matrices.outputs.matrix }}
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: 17
+          distribution: temurin
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - id: generate-matrices
+        name: Create output matrices
+        run: |
+          python ./.github/scripts/generate-build-matrices.py HEAD~1 Release
+
   build_and_publish:
+    name: Build and Publish
+    needs: prepare
+    if: ${{ needs.prepare.outputs.matrix != '' && fromJSON(needs.prepare.outputs.matrix).chunk[0] != null }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout master
@@ -30,34 +62,39 @@ jobs:
       - name: Prepare signing key
         run: echo "${{ secrets.SIGNING_KEY }}" | base64 -d > signingkey.jks
 
-      - name: Build All Extensions
+      - name: Build Changed Extensions
         env:
           ALIAS: ${{ secrets.ALIAS }}
           KEY_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        # Este comando busca todos los módulos en src y los compila uno por uno
         run: |
-          chmod +x ./gradlew
-          ./gradlew assembleRelease
+          ./gradlew $(echo '${{ needs.prepare.outputs.matrix }}' | jq -r '.chunk[].modules | join(" ")')
 
       - name: Create Repo Structure
         run: |
-          mkdir -p repo/apk
-          # Buscamos todos los APKs generados en cualquier subcarpeta de src
-          find src -name "*-release.apk" -exec cp {} repo/apk/ \;
+          # 1. Crear carpeta limpia para el despliegue
+          mkdir -p final_repo/apk
           
-          # Descarga del inspector para procesar todos los APKs encontrados
+          # 2. Mover los APKs generados
+          find src -name "*-release.apk" -exec cp {} final_repo/apk/ \;
+          
+          # 3. Generar metadatos (Inspector)
           INSPECTOR_LINK="$(curl -s "https://api.github.com/repos/komikku-app/aniyomi-extensions-inspector/releases/latest" | jq -r '.assets[0].browser_download_url')"
           curl -L "$INSPECTOR_LINK" -o ./Inspector.jar
+          java -jar ./Inspector.jar "final_repo/apk" "output.json" "tmp"
           
-          # Generar el index.min.json con la info de todas las extensiones
-          java -jar ./Inspector.jar "repo/apk" "output.json" "tmp"
+          # 4. Crear estructura final
+          # Renombramos temporalmente para que el script create-repo.py funcione
+          mv final_repo repo
           python ./.github/scripts/create-repo.py
 
       - name: Deploy to repo branch
         uses: EndBug/add-and-commit@v9
         with:
-          message: "Full Build: All extensions updated"
-          add: "repo --force"
+          message: "Filtered Build: Extensions updated"
+          # Subimos el contenido de la carpeta, no la carpeta entera
+          add: "." 
+          cwd: "./repo"
+          force: true
           new_branch: repo
           push: true

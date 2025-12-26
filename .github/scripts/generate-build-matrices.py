@@ -93,15 +93,22 @@ def get_all_modules() -> tuple[list[str], list[str]]:
     return modules, deleted
 
 def main() -> NoReturn:
-    # Ignoramos los argumentos y forzamos a que siempre obtenga TODO
-    modules, deleted = get_all_modules()
-
-    build_type = "Release" # Forzamos el tipo de construcción
+    # Restauramos la lectura de argumentos: _, referencia_git, tipo_build
+    # Ejemplo: python script.py HEAD~1 Release
+    _, ref, build_type = sys.argv
     
+    # Lógica de decisión:
+    if ref == "--all":
+        # Si pasas --all, compila todo el catálogo
+        modules, deleted = get_all_modules()
+    else:
+        # Si pasas una referencia (como HEAD~1), solo compila lo que cambió
+        modules, deleted = get_module_list(ref)
+
     chunked = {
         "chunk": [
-            {"number": i + 1, "modules": modules}
-            for i, modules in
+            {"number": i + 1, "modules": list(modules_batch)}
+            for i, modules_batch in
             enumerate(itertools.batched(
                 map(lambda x: f"{x}:assemble{build_type}", modules),
                 int(os.getenv("CI_CHUNK_SIZE", 65))
@@ -109,11 +116,15 @@ def main() -> NoReturn:
         ]
     }
 
-    print(f"Matrix: {json.dumps(chunked)}")
-
+    # Imprimir para debug en los logs de GitHub
+    print(f"Modules to build: {len(modules)}")
+    
     if os.getenv("CI") == "true":
         with open(os.getenv("GITHUB_OUTPUT"), 'a') as out_file:
             out_file.write(f"matrix={json.dumps(chunked)}\n")
             out_file.write(f"delete={json.dumps(deleted)}\n")
     
     sys.exit(0)
+
+if __name__ == '__main__':
+    main()

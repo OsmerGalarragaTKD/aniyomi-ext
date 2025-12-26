@@ -28,8 +28,6 @@ Source requests here are meant as up-for-grabs for any developer, thus it's impo
 
 Contributions are welcome!
 
-Check out the repo's [issue backlog](https://github.com/yuzono/aniyomi-extensions/issues) for source requests and bug reports.
-
 To get started with development, see [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 It might also be good to read our [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md).
