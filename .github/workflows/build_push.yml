@@ -1,73 +1,21 @@
-name: CI
+name: CI Direct Build
 
 on:
   push:
-    branches:
-      - master
-    paths:
-      - '**'
-      - '!**.md'
-      - '!.github/**'
-      - '.github/scripts/**'
+    branches: [ master ]
   workflow_dispatch:
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
 
 permissions:
   contents: write
 
-env:
-  CI_CHUNK_SIZE: 65
-  IS_PR_CHECK: false
-
 jobs:
-  prepare:
-    name: Prepare job
-    runs-on: 'ubuntu-24.04'
-    outputs:
-      latestCommitMessage: ${{ steps.set-env.outputs.LATEST_COMMIT_MESSAGE }}
-      matrix: ${{ steps.generate-matrices.outputs.matrix }}
-      delete: ${{ steps.generate-matrices.outputs.delete }}
+  build_and_publish:
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout branch
+      - name: Checkout master
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: Set env
-        id: set-env
-        run: |
-          echo "LATEST_COMMIT_MESSAGE<<{delimiter}
-          $(git log -1 --pretty=%B)
-          Built on commit: $(git log -1 --pretty=%H)
-          {delimiter}" >> $GITHUB_OUTPUT
-
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          java-version: 17
-          distribution: temurin
-
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
-
-      - id: generate-matrices
-        name: Create output matrices
-        run: |
-          # CORRECCIÓN: Se cambió HEAD~1 por --all para evitar matrices vacías en la primera ejecución
-          python ./.github/scripts/generate-build-matrices.py --all Release
-
-  build:
-    name: Build extensions (${{ matrix.chunk.number }})
-    needs: prepare
-    runs-on: 'ubuntu-24.04'
-    strategy:
-      matrix: ${{ fromJSON(needs.prepare.outputs.matrix) }}
-    steps:
-      - name: Checkout branch
-        uses: actions/checkout@v4
 
       - name: Set up Java
         uses: actions/setup-java@v4
@@ -79,62 +27,34 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       - name: Prepare signing key
-        run: |
-          echo "${{ secrets.SIGNING_KEY }}" | base64 -d > signingkey.jks
+        run: echo "${{ secrets.SIGNING_KEY }}" | base64 -d > signingkey.jks
 
-      - name: Build extensions (${{ matrix.chunk.number }})
+      - name: Build Pandrama Extension
         env:
           ALIAS: ${{ secrets.ALIAS }}
           KEY_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        # Aquí compilamos solo Pandrama directamente para evitar errores de matriz
+        run: ./gradlew :src:es:pandrama:assembleRelease
+
+      - name: Create Repo Structure
         run: |
-          ./gradlew $(echo '${{ toJson(matrix.chunk.modules) }}' | jq -r 'join(" ")')
-
-      - name: Upload APKs
-        uses: actions/upload-artifact@v4
-        with:
-          name: "individual-apks-${{ matrix.chunk.number }}"
-          path: "**/*.apk"
-          retention-days: 1
-
-      - name: Clean up
-        run: rm signingkey.jks
-
-  publish:
-    name: Publish extension repo
-    needs: [prepare, build]
-    runs-on: 'ubuntu-24.04'
-    steps:
-      - name: Download APK artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: ~/apk-artifacts
-
-      - name: Set up JDK
-        uses: actions/setup-java@v4
-        with:
-          java-version: 17
-          distribution: temurin
-
-      - name: Checkout master branch
-        uses: actions/checkout@v4
-        with:
-          path: master
-
-      - name: Create repo artifacts
-        run: |
-          cd master
-          python ./.github/scripts/move-built-apks.py
+          mkdir -p repo/apk
+          # Mueve el APK generado a la carpeta repo
+          find src -name "*.apk" -exec cp {} repo/apk/ \;
+          
+          # Descarga el inspector para generar el index.json
           INSPECTOR_LINK="$(curl -s "https://api.github.com/repos/komikku-app/aniyomi-extensions-inspector/releases/latest" | jq -r '.assets[0].browser_download_url')"
           curl -L "$INSPECTOR_LINK" -o ./Inspector.jar
+          
+          # Genera los archivos necesarios
           java -jar ./Inspector.jar "repo/apk" "output.json" "tmp"
           python ./.github/scripts/create-repo.py
 
       - name: Deploy to repo branch
         uses: EndBug/add-and-commit@v9
         with:
-          message: "Update repo: ${{ needs.prepare.outputs.latestCommitMessage }}"
+          message: "Manual Build: Pandrama Update"
           add: "repo"
           branch: repo
-          cwd: "./master"
           push: true
