@@ -28,7 +28,7 @@ import uy.kohesive.injekt.injectLazy
 
 class AnimeOnsen : ConfigurableAnimeSource, AnimeHttpSource() {
 
-    override val name = "AnimeOnsen"
+    override val name = "AnimeOnsen "
 
     override val baseUrl = "https://animeonsen.xyz"
 
