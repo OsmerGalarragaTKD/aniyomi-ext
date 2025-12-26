@@ -72,28 +72,34 @@ jobs:
 
       - name: Create Repo Structure
         run: |
-          # 1. Crear directorio para APKs
+          # 1. Crear carpeta temporal para recolectar TODO
           mkdir -p final_repo/apk
+          
+          # 2. Intentar traer los APKs que ya existen en la rama 'repo' para que no se pierdan
+          git fetch origin repo
+          git checkout origin/repo -- apk/ || true
+          cp -r apk/* final_repo/apk/ 2>/dev/null || true
+          
+          # 3. Copiar los NUEVOS APKs recién compilados
           find src -name "*-release.apk" -exec cp {} final_repo/apk/ \;
           
-          # 2. Descargar Inspector y generar JSON de metadatos
+          # 4. Descargar Inspector y generar JSON con la lista TOTAL (Viejos + Nuevos)
           INSPECTOR_LINK="$(curl -s "https://api.github.com/repos/komikku-app/aniyomi-extensions-inspector/releases/latest" | jq -r '.assets[0].browser_download_url')"
           curl -L "$INSPECTOR_LINK" -o ./Inspector.jar
           java -jar ./Inspector.jar "final_repo/apk" "output.json" "tmp"
           
-          # 3. Organizar con tu script de Python
+          # 5. Organizar con tu script
           mv final_repo repo
           python ./.github/scripts/create-repo.py
           
-          # 4. SINCRONIZACIÓN A RAÍZ: Mover archivos de repo/ a la raíz del espacio de trabajo
-          # Esto evita que el archivo quede oculto en subcarpetas
+          # 6. Sincronizar a la raíz
           cp -r repo/* .
           rm -rf repo 
 
       - name: Deploy to repo branch
         uses: EndBug/add-and-commit@v9
         with:
-          message: "Full Sync: Master + Extensions Root"
+          message: "Full Sync: Updated all extensions in JSON"
           add: "." 
           new_branch: repo
           push: true
