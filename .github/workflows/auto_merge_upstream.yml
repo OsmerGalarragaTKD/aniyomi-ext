@@ -1,19 +1,18 @@
 name: Auto Merge Upstream
 
 on:
-  # Monthly
+  # Se ejecuta todos los días a medianoche automáticamente
   schedule:
     - cron: '0 0 * * *'
-  # Manual trigger
+  # Permite activarlo manualmente
   workflow_dispatch:
-    inputs:
 
 permissions:
   contents: write
 
 jobs:
   update-kohi-den:
-    if: github.repository == 'yuzono/aniyomi-extensions'
+    # ELIMINADO: La restricción de yuzono para que funcione en tu cuenta
     name: Update Kohi-den
     runs-on: ubuntu-latest
 
@@ -23,16 +22,16 @@ jobs:
           echo "UPSTREAM_URL=https://kohiden.xyz/Kohi-den/extensions-source.git" >> $GITHUB_ENV
           echo "UPSTREAM_BRANCH=main" >> $GITHUB_ENV
           echo "LOCAL_BRANCH=kohiden" >> $GITHUB_ENV
-          echo "MERGE_BRANCH=main" >> $GITHUB_ENV
+          echo "MERGE_BRANCH=master" >> $GITHUB_ENV 
 
       - name: Checkout repository
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+        uses: actions/checkout@v4
         with:
-          ref: ${{env.LOCAL_BRANCH}}
+          ref: master # Cambiado a master para asegurar que use tu rama principal
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Add remote repository
-        run: git remote add upstream ${{env.UPSTREAM_URL}}
+        run: git remote add upstream ${{env.UPSTREAM_URL}} || true
 
       - name: Fetch upstream changes
         run: git fetch upstream
@@ -41,25 +40,8 @@ jobs:
         run: |
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
-
-          git merge upstream/${{env.UPSTREAM_BRANCH}}
+          # Intenta fusionar los cambios externos
+          git merge upstream/${{env.UPSTREAM_BRANCH}} --allow-unrelated-histories -m "Sync with upstream" || echo "No hay cambios para fusionar o hay conflictos"
 
       - name: Push changes to repository
-        run: git push origin ${{env.LOCAL_BRANCH}}
-
-      # - name: Checkout repository
-      #   uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
-      #   with:
-      #     fetch-depth: 0
-      #     ref: ${{env.MERGE_BRANCH}}
-      #     token: ${{ secrets.GITHUB_TOKEN }}
-
-      # - name: Merge ${{env.LOCAL_BRANCH}}
-      #   run: |
-      #     git config --global user.email "github-actions[bot]@users.noreply.github.com"
-      #     git config --global user.name "github-actions[bot]"
-
-      #     git merge origin/${{env.LOCAL_BRANCH}}
-
-      # - name: Push to repository
-      #   run: git push origin ${{env.MERGE_BRANCH}}
+        run: git push origin master
