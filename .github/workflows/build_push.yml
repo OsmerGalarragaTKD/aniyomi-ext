@@ -37,7 +37,8 @@ jobs:
       - id: generate-matrices
         name: Create output matrices
         run: |
-          python ./.github/scripts/generate-build-matrices.py HEAD~1 Release
+          # CAMBIO CLAVE: Usamos --all para que el script de Python liste TODO el catálogo
+          python ./.github/scripts/generate-build-matrices.py --all Release
 
   build_and_publish:
     name: Build and Publish
@@ -62,7 +63,7 @@ jobs:
       - name: Prepare signing key
         run: echo "${{ secrets.SIGNING_KEY }}" | base64 -d > signingkey.jks
 
-      - name: Build Changed Extensions
+      - name: Build All Extensions
         env:
           ALIAS: ${{ secrets.ALIAS }}
           KEY_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
@@ -72,34 +73,29 @@ jobs:
 
       - name: Create Repo Structure
         run: |
-          # 1. Crear directorio temporal
+          # 1. Crear directorio temporal limpio
           mkdir -p final_repo/apk
           
-          # 2. Rescatar APKs existentes de la rama repo para acumularlos
-          git fetch origin repo || true
-          git checkout origin/repo -- apk/ || true
-          cp -r apk/* final_repo/apk/ 2>/dev/null || true
-          
-          # 3. Copiar los nuevos APKs recién creados
+          # 2. Copiar los nuevos APKs recién creados (todos los de src)
           find src -name "*-release.apk" -exec cp {} final_repo/apk/ \;
           
-          # 4. Generar JSON completo con el Inspector
+          # 3. Generar JSON completo con el Inspector
           INSPECTOR_LINK="$(curl -s "https://api.github.com/repos/komikku-app/aniyomi-extensions-inspector/releases/latest" | jq -r '.assets[0].browser_download_url')"
           curl -L "$INSPECTOR_LINK" -o ./Inspector.jar
           java -jar ./Inspector.jar "final_repo/apk" "output.json" "tmp"
           
-          # 5. Organizar archivos finales
+          # 4. Organizar archivos finales
           mv final_repo repo
           python ./.github/scripts/create-repo.py
           
-          # 6. Mover todo a la raíz para Aniyomi
+          # 5. Mover todo a la raíz para Aniyomi
           cp -r repo/* .
           rm -rf repo 
 
       - name: Deploy to repo branch
         uses: EndBug/add-and-commit@v9
         with:
-          message: "Full Sync: Updated all extensions in JSON"
+          message: "Full Catalog Update: All extensions included"
           add: "." 
           new_branch: repo
           push: origin repo --force
