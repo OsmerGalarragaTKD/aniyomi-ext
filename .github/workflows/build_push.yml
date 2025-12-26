@@ -1,8 +1,9 @@
-name: CI Direct Build
+name: CI Full Build
 
 on:
   push:
-    branches: [ master ]
+    branches:
+      - master
   workflow_dispatch:
 
 permissions:
@@ -29,32 +30,34 @@ jobs:
       - name: Prepare signing key
         run: echo "${{ secrets.SIGNING_KEY }}" | base64 -d > signingkey.jks
 
-      - name: Build Pandrama Extension
+      - name: Build All Extensions
         env:
           ALIAS: ${{ secrets.ALIAS }}
           KEY_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        # Aquí compilamos solo Pandrama directamente para evitar errores de matriz
-        run: ./gradlew :src:es:pandrama:assembleRelease
+        # Este comando busca todos los módulos en src y los compila uno por uno
+        run: |
+          chmod +x ./gradlew
+          ./gradlew assembleRelease
 
       - name: Create Repo Structure
         run: |
           mkdir -p repo/apk
-          # Mueve el APK generado a la carpeta repo
-          find src -name "*.apk" -exec cp {} repo/apk/ \;
+          # Buscamos todos los APKs generados en cualquier subcarpeta de src
+          find src -name "*-release.apk" -exec cp {} repo/apk/ \;
           
-          # Descarga el inspector para generar el index.json
+          # Descarga del inspector para procesar todos los APKs encontrados
           INSPECTOR_LINK="$(curl -s "https://api.github.com/repos/komikku-app/aniyomi-extensions-inspector/releases/latest" | jq -r '.assets[0].browser_download_url')"
           curl -L "$INSPECTOR_LINK" -o ./Inspector.jar
           
-          # Genera los archivos necesarios
+          # Generar el index.min.json con la info de todas las extensiones
           java -jar ./Inspector.jar "repo/apk" "output.json" "tmp"
           python ./.github/scripts/create-repo.py
 
-      -- name: Deploy to repo branch
+      - name: Deploy to repo branch
         uses: EndBug/add-and-commit@v9
         with:
-          message: "Manual Build: Pandrama Update"
-          add: "repo --force" # Usamos --force para saltar el .gitignore
-          new_branch: repo     # El parámetro correcto es new_branch, no branch
+          message: "Full Build: All extensions updated"
+          add: "repo --force"
+          new_branch: repo
           push: true
