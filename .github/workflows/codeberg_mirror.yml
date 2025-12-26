@@ -1,23 +1,15 @@
-# Sincronizar el repositorio con un espejo en Codeberg
-name: Mirror Sync
-
-on:
-  push:
-    branches: [ "master" ]
-  workflow_dispatch: # Permite ejecución manual
-  schedule:
-    - cron: "0 */8 * * *" # Se ejecuta cada 8 horas
-
-jobs:
-  codeberg:
-    # ELIMINADO: La restricción de yuzono para que funcione en tu cuenta
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - uses: pixta-dev/repository-mirroring-action@v1
-        with:
-          # Debes cambiar esta URL por tu propia URL de Codeberg si tienes una
-          target_repo_url: "git@codeberg.org:OsmerGalarragaTKD/aniyomi-extensions.git"
-          ssh_private_key: ${{ secrets.CODEBERG_SSH }}
+# name: Mirror Sync
+# 
+# on:
+#   push:
+#     branches: [ "master" ]
+#   workflow_dispatch:
+#   schedule:
+#     - cron: "0 */8 * * *"
+# 
+# jobs:
+#   codeberg:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - uses: actions/checkout@v4
+# ... (todas las líneas con # al principio)
