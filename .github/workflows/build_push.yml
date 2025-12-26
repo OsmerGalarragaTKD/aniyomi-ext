@@ -75,7 +75,7 @@ jobs:
           # 1. Crear directorio temporal
           mkdir -p final_repo/apk
           
-          # 2. Rescatar APKs existentes de la rama repo (si existe)
+          # 2. Rescatar APKs existentes de la rama repo para acumularlos
           git fetch origin repo || true
           git checkout origin/repo -- apk/ || true
           cp -r apk/* final_repo/apk/ 2>/dev/null || true
@@ -102,6 +102,5 @@ jobs:
           message: "Full Sync: Updated all extensions in JSON"
           add: "." 
           new_branch: repo
-          # Usamos push con argumentos adicionales para forzar la actualización
           push: origin repo --force
           github_token: ${{ secrets.GITHUB_TOKEN }}
