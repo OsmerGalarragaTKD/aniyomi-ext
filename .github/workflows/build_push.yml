@@ -72,19 +72,22 @@ jobs:
 
       - name: Create Repo Structure
         run: |
+          # 1. Crear directorio para APKs
           mkdir -p final_repo/apk
           find src -name "*-release.apk" -exec cp {} final_repo/apk/ \;
           
+          # 2. Descargar Inspector y generar JSON de metadatos
           INSPECTOR_LINK="$(curl -s "https://api.github.com/repos/komikku-app/aniyomi-extensions-inspector/releases/latest" | jq -r '.assets[0].browser_download_url')"
           curl -L "$INSPECTOR_LINK" -o ./Inspector.jar
           java -jar ./Inspector.jar "final_repo/apk" "output.json" "tmp"
           
+          # 3. Organizar con tu script de Python
           mv final_repo repo
           python ./.github/scripts/create-repo.py
           
-          # Sincronizamos: Copiamos el contenido de la tienda a la raíz
+          # 4. SINCRONIZACIÓN A RAÍZ: Mover archivos de repo/ a la raíz del espacio de trabajo
+          # Esto evita que el archivo quede oculto en subcarpetas
           cp -r repo/* .
-          # Opcional: eliminar la carpeta temporal repo para no duplicar datos
           rm -rf repo 
 
       - name: Deploy to repo branch
@@ -92,6 +95,6 @@ jobs:
         with:
           message: "Full Sync: Master + Extensions Root"
           add: "." 
-          # Forzamos la creación de la rama si no existe
           new_branch: repo
           push: true
+          github_token: ${{ secrets.GITHUB_TOKEN }}
