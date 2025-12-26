@@ -28,7 +28,7 @@ class Pandrama : ConfigurableAnimeSource, AnimeHttpSource() {
 
     override val name = "Pandrama"
 
-    override val baseUrl = "https://pandra.ma"
+    override val baseUrl = "https://pandrama.tv"
 
     override val lang = "es"
 
