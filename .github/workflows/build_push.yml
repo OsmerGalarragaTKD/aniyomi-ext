@@ -72,27 +72,27 @@ jobs:
 
       - name: Create Repo Structure
         run: |
-          # 1. Crear carpeta temporal para recolectar TODO
+          # 1. Crear directorio temporal
           mkdir -p final_repo/apk
           
-          # 2. Intentar traer los APKs que ya existen en la rama 'repo' para que no se pierdan
-          git fetch origin repo
+          # 2. Rescatar APKs existentes de la rama repo (si existe)
+          git fetch origin repo || true
           git checkout origin/repo -- apk/ || true
           cp -r apk/* final_repo/apk/ 2>/dev/null || true
           
-          # 3. Copiar los NUEVOS APKs recién compilados
+          # 3. Copiar los nuevos APKs recién creados
           find src -name "*-release.apk" -exec cp {} final_repo/apk/ \;
           
-          # 4. Descargar Inspector y generar JSON con la lista TOTAL (Viejos + Nuevos)
+          # 4. Generar JSON completo con el Inspector
           INSPECTOR_LINK="$(curl -s "https://api.github.com/repos/komikku-app/aniyomi-extensions-inspector/releases/latest" | jq -r '.assets[0].browser_download_url')"
           curl -L "$INSPECTOR_LINK" -o ./Inspector.jar
           java -jar ./Inspector.jar "final_repo/apk" "output.json" "tmp"
           
-          # 5. Organizar con tu script
+          # 5. Organizar archivos finales
           mv final_repo repo
           python ./.github/scripts/create-repo.py
           
-          # 6. Sincronizar a la raíz
+          # 6. Mover todo a la raíz para Aniyomi
           cp -r repo/* .
           rm -rf repo 
 
@@ -103,5 +103,5 @@ jobs:
           add: "." 
           new_branch: repo
           push: true
-          force: true # <--- AÑADE ESTA LÍNEA PARA EVITAR EL ERROR DE RECHAZO
+          force: true
           github_token: ${{ secrets.GITHUB_TOKEN }}
