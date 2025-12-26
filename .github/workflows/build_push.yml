@@ -51,10 +51,10 @@ jobs:
           java -jar ./Inspector.jar "repo/apk" "output.json" "tmp"
           python ./.github/scripts/create-repo.py
 
-      - name: Deploy to repo branch
+      -- name: Deploy to repo branch
         uses: EndBug/add-and-commit@v9
         with:
           message: "Manual Build: Pandrama Update"
-          add: "repo"
-          branch: repo
+          add: "repo --force" # Usamos --force para saltar el .gitignore
+          new_branch: repo     # El parámetro correcto es new_branch, no branch
           push: true
